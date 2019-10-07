@@ -33,6 +33,7 @@ Branch_Predictor *initBranchPredictor()
     #endif
 
     #ifdef TOURNAMENT
+	
     assert(checkPowerofTwo(localPredictorSize));
     assert(checkPowerofTwo(localHistoryTableSize));
     assert(checkPowerofTwo(globalPredictorSize));
@@ -96,6 +97,24 @@ Branch_Predictor *initBranchPredictor()
     branch_predictor->history_register_mask = choicePredictorSize - 1;
     #endif
 
+	#ifdef GSHARE
+	
+	branch_predictor->global_predictor_sets = globalPredictorSize;
+    assert(checkPowerofTwo(branch_predictor->global_predictor_sets));
+
+    branch_predictor->index_mask = branch_predictor->global_predictor_sets - 1;
+
+    // Initialize sat counters
+    branch_predictor->global_counters =
+        (Sat_Counter *)malloc(branch_predictor->global_predictor_sets * sizeof(Sat_Counter));
+
+    int i = 0;
+    for (i; i < branch_predictor->global_predictor_sets; i++)
+    {
+        initSatCounter(&(branch_predictor->global_counters[i]), globalCounterBits);
+    }
+    #endif
+	
     return branch_predictor;
 }
 
@@ -223,6 +242,30 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
     // exit(0);
     //
     return prediction_correct;
+    #endif
+
+	#ifdef GSHARE    
+    // Step one, get prediction
+    unsigned global_index = getIndex(branch_address, 
+                                    branch_predictor->index_mask);
+
+    bool prediction = getPrediction(&(branch_predictor->local_counters[local_index]));
+
+    // Step two, update counter
+    if (instr->taken)
+    {
+        // printf("Correct: %u -> ", branch_predictor->local_counters[local_index].counter);
+        incrementCounter(&(branch_predictor->global_counters[global_index]));
+        // printf("%u\n", branch_predictor->local_counters[local_index].counter);
+    }
+    else
+    {
+        // printf("Incorrect: %u -> ", branch_predictor->local_counters[local_index].counter);
+        decrementCounter(&(branch_predictor->local_counters[local_index]));
+        // printf("%u\n", branch_predictor->local_counters[local_index].counter);
+    }
+
+    return prediction == instr->taken;
     #endif
 }
 
