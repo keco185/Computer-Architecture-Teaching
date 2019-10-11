@@ -3,13 +3,13 @@
 const unsigned instShiftAmt = 2; // Number of bits to shift a PC by
 
 // You can play around with these settings.
-const unsigned localPredictorSize = 2048;
-const unsigned localCounterBits = 2;
-const unsigned localHistoryTableSize = 2048; 
-const unsigned globalPredictorSize = 8192 ;
-const unsigned globalCounterBits = 2;
-const unsigned choicePredictorSize = 8192; // Keep this the same as globalPredictorSize.
-const unsigned choiceCounterBits = 2;
+const unsigned localPredictorSize = 2048;   // two-bit
+const unsigned localCounterBits = 2;        //two-bit
+const unsigned localHistoryTableSize = 2048;// Tournament
+const unsigned globalPredictorSize = 1048576; // Tournament & gshare
+const unsigned globalCounterBits = 2;       // Tournament & gshare ~
+const unsigned choicePredictorSize = 8192;  // Tournament Keep this the same as globalPredictorSize.
+const unsigned choiceCounterBits = 2;       // Tournament ~
 
 Branch_Predictor *initBranchPredictor()
 {
@@ -97,22 +97,23 @@ Branch_Predictor *initBranchPredictor()
     branch_predictor->history_register_mask = choicePredictorSize - 1;
     #endif
 
-	#ifdef GSHARE
-	
-	branch_predictor->global_predictor_sets = globalPredictorSize;
-    assert(checkPowerofTwo(branch_predictor->global_predictor_sets));
-
-    branch_predictor->index_mask = branch_predictor->global_predictor_sets - 1;
-
-    // Initialize sat counters
-    branch_predictor->global_counters =
-        (Sat_Counter *)malloc(branch_predictor->global_predictor_sets * sizeof(Sat_Counter));
-
-    int i = 0;
-    for (i; i < branch_predictor->global_predictor_sets; i++)
+    #ifdef GSHARE
+    assert(checkPowerofTwo(globalPredictorSize));
+    branch_predictor->global_predictor_size = globalPredictorSize;
+   
+    // Initialize global counters
+    branch_predictor->global_counters = 
+        (Sat_Counter *)malloc(globalPredictorSize * sizeof(Sat_Counter));
+    
+    for (int i = 0; i < globalPredictorSize; i++)
     {
         initSatCounter(&(branch_predictor->global_counters[i]), globalCounterBits);
     }
+    
+    branch_predictor->global_history_mask = globalPredictorSize - 1;
+
+    // global history register
+    branch_predictor->global_history = 0;
     #endif
 	
     return branch_predictor;
@@ -245,27 +246,25 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
     #endif
 
 	#ifdef GSHARE    
-    // Step one, get prediction
-    unsigned global_index = getIndex(branch_address, 
-                                    branch_predictor->index_mask);
+    // Step one, get global prediction.
+    unsigned global_predictor_idx = 
+        (branch_predictor->global_history & branch_predictor->global_history_mask) ^ (branch_address & branch_predictor->global_history_mask);
+    bool global_prediction = 
+        getPrediction(&(branch_predictor->global_counters[global_predictor_idx]));
+    
+    bool prediction_correct = global_prediction == instr->taken;
 
-    bool prediction = getPrediction(&(branch_predictor->local_counters[local_index]));
-
-    // Step two, update counter
+    // Step twp, update counters
     if (instr->taken)
-    {
-        // printf("Correct: %u -> ", branch_predictor->local_counters[local_index].counter);
-        incrementCounter(&(branch_predictor->global_counters[global_index]));
-        // printf("%u\n", branch_predictor->local_counters[local_index].counter);
-    }
+        incrementCounter(&(branch_predictor->global_counters[global_predictor_idx]));
     else
-    {
-        // printf("Incorrect: %u -> ", branch_predictor->local_counters[local_index].counter);
-        decrementCounter(&(branch_predictor->local_counters[local_index]));
-        // printf("%u\n", branch_predictor->local_counters[local_index].counter);
-    }
+        decrementCounter(&(branch_predictor->global_counters[global_predictor_idx]));
 
-    return prediction == instr->taken;
+    // Step three, update global history register
+    branch_predictor->global_history = branch_predictor->global_history << 1 | instr->taken;
+    // exit(0);
+    //
+    return prediction_correct;
     #endif
 }
 
