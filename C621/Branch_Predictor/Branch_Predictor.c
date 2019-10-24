@@ -122,26 +122,26 @@ Branch_Predictor *initBranchPredictor()
     return branch_predictor;
 }
 
-    // Perceptron
+   // Perceptron
     #ifdef PERCEPTRON
-    branch_predictor -> local_predictor_sets = localPredictorSize;
-    assert(checkPowerofTwo(branch_predictor -> local_predictor_sets));
+    branch_predictor->local_predictor_sets = localPredictorSize;
+    assert(checkPowerofTwo(branch_predictor->local_predictor_sets));
 
-    branch_predictor -> index_mask = branch_predictor -> local_preductor_sets - 1;
+    branch_predictor->index_mask = branch_predictor->local_predictor_sets - 1;
 
-    // Initialize sat counter
-    branch_predictor -> local_counters = 
-        (Sat_Counter *)malloc(branch_predictor -> local_predictor_sets * sizeof(Sat_Counter));
+    // Initialize sat counters
+    branch_predictor->local_counters =
+        (Sat_Counter *)malloc(branch_predictor->local_predictor_sets * sizeof(Sat_Counter));
 
-    for (int i = 0; i < branch_predictor -> local_predictor_sets; i++)
+    int i = 0;
+    for (i; i < branch_predictor->local_predictor_sets; i++)
     {
-        initSatCounter(&(branch_predictor -> local_counters[i]), localCounterBits);
+        initSatCounter(&(branch_predictor->local_counters[i]), localCounterBits);
     }
     #endif
-	
+
     return branch_predictor;
 }
-
 
 // sat counter functions
 inline void initSatCounter(Sat_Counter *sat_counter, unsigned counter_bits)
@@ -292,23 +292,24 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
     #endif
 }
 
-    #ifdef PERCEPTRON    
-    // Step one, get global prediction.
-    unsigned local_index = getIndex(branch_address, branch_predictor -> index_mask);
+    #ifdef PERCEPTRON
+    // Step one, get prediction
+    unsigned local_index = getIndex(branch_address, 
+                                    branch_predictor->index_mask);
 
     bool prediction = getPrediction(&(branch_predictor->local_counters[local_index]));
 
-    // Step two, update counters
+    // Step two, update counter
     if (instr->taken)
-        incrementCounter(&(branch_predictor->lobal_counters[local_index]));
+    {
+        incrementCounter(&(branch_predictor->local_counters[local_index]));
+    }
     else
-        decrementCounter(&(branch_predictor->lobal_counters[local_index]));
+    {
+        decrementCounter(&(branch_predictor->local_counters[local_index]));
+    }
 
-    // Step three, update global history register
-    branch_predictor->global_history = branch_predictor->global_history << 1 | instr->taken;
-    // exit(0);
-    //
-    return prediction == instr -> taken;
+    return prediction == instr->taken;
     #endif
 }
 
