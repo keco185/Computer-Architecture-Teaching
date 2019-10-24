@@ -10,6 +10,8 @@ const unsigned globalPredictorSize = 1048576; // Tournament & gshare
 const unsigned globalCounterBits = 2;       // Tournament & gshare ~
 const unsigned choicePredictorSize = 8192;  // Tournament Keep this the same as globalPredictorSize.
 const unsigned choiceCounterBits = 2;       // Tournament ~
+const unsigned perceptronsize = 12;
+const unsigned perceptronTableSize = 12;
 
 Branch_Predictor *initBranchPredictor()
 {
@@ -97,6 +99,7 @@ Branch_Predictor *initBranchPredictor()
     branch_predictor->history_register_mask = choicePredictorSize - 1;
     #endif
 
+    // GShare
     #ifdef GSHARE
     assert(checkPowerofTwo(globalPredictorSize));
     branch_predictor->global_predictor_size = globalPredictorSize;
@@ -118,6 +121,27 @@ Branch_Predictor *initBranchPredictor()
 	
     return branch_predictor;
 }
+
+    // Perceptron
+    #ifdef PERCEPTRON
+    branch_predictor -> local_predictor_sets = localPredictorSize;
+    assert(checkPowerofTwo(branch_predictor -> local_predictor_sets));
+
+    branch_predictor -> index_mask = branch_predictor -> local_preductor_sets - 1;
+
+    // Initialize sat counter
+    branch_predictor -> local_counters = 
+        (Sat_Counter *)malloc(branch_predictor -> local_predictor_sets * sizeof(Sat_Counter));
+
+    for (int i = 0; i < branch_predictor -> local_predictor_sets; i++)
+    {
+        initSatCounter(&(branch_predictor -> local_counters[i]), localCounterBits);
+    }
+    #endif
+	
+    return branch_predictor;
+}
+
 
 // sat counter functions
 inline void initSatCounter(Sat_Counter *sat_counter, unsigned counter_bits)
@@ -245,7 +269,7 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
     return prediction_correct;
     #endif
 
-	#ifdef GSHARE    
+    #ifdef GSHARE    
     // Step one, get global prediction.
     unsigned global_predictor_idx = 
         (branch_predictor->global_history & branch_predictor->global_history_mask) ^ (branch_address & branch_predictor->global_history_mask);
@@ -254,7 +278,7 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
     
     bool prediction_correct = global_prediction == instr->taken;
 
-    // Step twp, update counters
+    // Step two, update counters
     if (instr->taken)
         incrementCounter(&(branch_predictor->global_counters[global_predictor_idx]));
     else
@@ -265,6 +289,26 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
     // exit(0);
     //
     return prediction_correct;
+    #endif
+}
+
+    #ifdef PERCEPTRON    
+    // Step one, get global prediction.
+    unsigned local_index = getIndex(branch_address, branch_predictor -> index_mask);
+
+    bool prediction = getPrediction(&(branch_predictor->local_counters[local_index]));
+
+    // Step two, update counters
+    if (instr->taken)
+        incrementCounter(&(branch_predictor->lobal_counters[local_index]));
+    else
+        decrementCounter(&(branch_predictor->lobal_counters[local_index]));
+
+    // Step three, update global history register
+    branch_predictor->global_history = branch_predictor->global_history << 1 | instr->taken;
+    // exit(0);
+    //
+    return prediction == instr -> taken;
     #endif
 }
 
