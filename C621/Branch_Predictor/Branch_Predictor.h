@@ -12,7 +12,8 @@
 // Predictor type
 //#define TWO_BIT_LOCAL
 //#define TOURNAMENT
-#define GSHARE
+//#define GSHARE
+#define PERCEPTRON
 
 // saturating counter
 typedef struct Sat_Counter
@@ -58,6 +59,12 @@ typedef struct Branch_Predictor
     Sat_Counter *global_counters;
     uint64_t global_history;
     #endif
+    
+    #ifdef PERCEPTRON
+    unsigned local_predictor_sets; // entries in the local predictor
+    unsigned index_mask;
+    #endif
+    
 }Branch_Predictor;
 
 // Initialization function
