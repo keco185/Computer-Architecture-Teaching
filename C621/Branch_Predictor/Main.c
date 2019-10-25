@@ -6,7 +6,6 @@ extern bool getInstruction(TraceParser *cpu_trace);
 
 extern Branch_Predictor *initBranchPredictor();
 extern bool predict(Branch_Predictor *branch_predictor, Instruction *instr);
-
 int main(int argc, const char *argv[])
 {	
     if (argc != 2)
@@ -18,6 +17,7 @@ int main(int argc, const char *argv[])
 
     // Initialize a CPU trace parser
     TraceParser *cpu_trace = initTraceParser(argv[1]);
+    printf("trace parser pass");
 
     // Initialize a branch predictor
     Branch_Predictor *branch_predictor = initBranchPredictor();
@@ -34,7 +34,6 @@ int main(int argc, const char *argv[])
         if (cpu_trace->cur_instr->instr_type == BRANCH)
         {
             ++num_of_branches;
-
             if (predict(branch_predictor, cpu_trace->cur_instr))
             {
                 ++num_of_correct_predictions;

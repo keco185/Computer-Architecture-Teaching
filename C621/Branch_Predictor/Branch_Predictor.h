@@ -27,7 +27,7 @@ typedef struct Sat_Counter
 
 typedef struct Perceptron
 {
-    int64_t * weight;
+    int64_t *weight;
     unsigned num_perceptron;
 } Perceptron;
 
@@ -96,7 +96,7 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr);
 
 // Perceptron
 void initPerceptron(Perceptron *perceptron, unsigned counter_bits);
-int64_t computePerceptron(Perceptron *perceptron, Sat_Counter * sat_counter);
+int64_t computePerceptron(Perceptron *perceptron, Sat_Counter *sat_counter);
 void train(Perceptron *perceptron, unsigned threshold, Sat_Counter * sat_counter, bool is_taken, int64_t y);
 
 unsigned getIndex(uint64_t branch_addr, unsigned index_mask);

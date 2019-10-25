@@ -7,7 +7,7 @@ const unsigned localPredictorSize = 2048;   // two-bit
 const unsigned localCounterBits = 2;        //two-bit
 const unsigned localHistoryTableSize = 2048;// Tournament
 const unsigned globalPredictorSize = 8192; // Tournament & gshare
-const unsigned globalCounterBits = 12;       // Tournament & gshare ~
+const unsigned globalCounterBits = 32;       // Tournament & gshare ~
 const unsigned choicePredictorSize = 8192;  // Tournament Keep this the same as globalPredictorSize.
 const unsigned choiceCounterBits = 2;       // Tournament ~
 const unsigned perceptronSize = 8192;
@@ -123,6 +123,17 @@ Branch_Predictor *initBranchPredictor()
    // Perceptron
     #ifdef PERCEPTRON
 	
+	branch_predictor->global_predictor_size = globalPredictorSize;
+    branch_predictor->global_history_mask = globalPredictorSize - 1;
+    branch_predictor->global_history = 0; // global history register
+    
+	// Initialize global counters
+    branch_predictor->global_counters = (Sat_Counter *)malloc(globalPredictorSize * sizeof(Sat_Counter));
+    
+	for (int i = 0; i < globalPredictorSize; i++)
+	{
+        initSatCounter(&(branch_predictor->global_counters[i]), globalCounterBits);
+	}
 	
     assert(checkPowerofTwo(perceptronSize));
 
@@ -173,8 +184,8 @@ inline void decrementCounter(Sat_Counter *sat_counter)
 // Branch Predictor functions
 bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
 {
-    uint64_t branch_address = instr->PC;
-
+    uint64_t branch_address = instr -> PC;
+	
     #ifdef TWO_BIT_LOCAL    
     // Step one, get prediction
     unsigned local_index = getIndex(branch_address, 
@@ -297,7 +308,7 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
 
     #ifdef PERCEPTRON
     // Step one, get prediction
-    unsigned perceptron_idx = branch_predictor -> perceptron_mask & branch_address;
+    unsigned perceptron_idx = (branch_predictor->global_history & branch_predictor->global_history_mask) ^ (branch_address & branch_predictor->global_history_mask);
 
     int64_t y = computePerceptron(&(branch_predictor -> perceptron[perceptron_idx]), &(branch_predictor -> global_counters[perceptron_idx]));
     train(&(branch_predictor -> perceptron[perceptron_idx]), branch_predictor -> threshold, &(branch_predictor -> global_counters[perceptron_idx]), instr -> taken, y);
