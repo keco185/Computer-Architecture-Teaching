@@ -125,17 +125,17 @@ Branch_Predictor *initBranchPredictor()
     #ifdef PERCEPTRON
     assert(checkPowerofTwo(perceptronSize));
 
-    branch_predictor -> perceptron_size = globalPredictorSize;
+    branch_predictor -> perceptron_size = perceptronSize;
 
     // Initialize threshold for branch prediction
     branch_predictor -> threshold =
         1.93 * globalCounterBits + 14; // best threshold given history length of h (found on page 201)
 
-    unsigned perceptronBits = 1 + floor(log2(branch_predictor -> threshold));
+    unsigned perceptronBit = 1 + floor(log2(branch_predictor -> threshold));
 
     branch_predictor -> perceptron_mask = perceptronSize - 1;
 
-    branch_predictor -> perceptron = (Perceptrons *)malloc(perceptronSize * sizeof(perceptron));
+    branch_predictor -> perceptron = (Perceptron *)malloc(perceptronSize * sizeof(perceptron));
 
     for (i; i < perceptronSize; i++)
     {
@@ -321,7 +321,7 @@ inline void initPerceptron(perceptron * Perceptron, unsigned counter_bits)
         perceptron -> num_perceptron = counter_bits;
 }
 
-inline init64_t computePerceptron(perceptron * Perceptron, Sat_Counter * sat_counter)
+inline int64_t computePerceptron(perceptron * Perceptron, Sat_Counter * sat_counter)
 {
 	int64_t y = perceptron -> weight[0];
 	for(int i =1; i <= sat_counter -> counter_bits; i++)
