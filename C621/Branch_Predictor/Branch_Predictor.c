@@ -137,7 +137,7 @@ Branch_Predictor *initBranchPredictor()
 
     branch_predictor -> perceptron = (Perceptron *)malloc(perceptronSize * sizeof(perceptron));
 
-    for (i; i < perceptronSize; i++)
+    for (int i = 0; i < perceptronSize; i++)
     {
         initPerceptron(&(branch_predictor->perceptron[i]), globalCounterBits);
     }
