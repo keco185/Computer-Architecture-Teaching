@@ -17,7 +17,6 @@ int main(int argc, const char *argv[])
 
     // Initialize a CPU trace parser
     TraceParser *cpu_trace = initTraceParser(argv[1]);
-    printf("trace parser pass");
 
     // Initialize a branch predictor
     Branch_Predictor *branch_predictor = initBranchPredictor();
@@ -48,6 +47,7 @@ int main(int argc, const char *argv[])
 
 //    printf("Number of instructions: %"PRIu64"\n", num_of_instructions);
 //    printf("Number of branches: %"PRIu64"\n", num_of_branches);
+    printf("File: %s\n", argv[1]);
     printf("Number of correct predictions: %"PRIu64"\n", num_of_correct_predictions);
     printf("Number of incorrect predictions: %"PRIu64"\n", num_of_incorrect_predictions);
 

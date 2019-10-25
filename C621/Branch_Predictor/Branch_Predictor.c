@@ -6,11 +6,11 @@ const unsigned instShiftAmt = 2; // Number of bits to shift a PC by
 const unsigned localPredictorSize = 2048;   // two-bit
 const unsigned localCounterBits = 2;        //two-bit
 const unsigned localHistoryTableSize = 2048;// Tournament
-const unsigned globalPredictorSize = 8192; // Tournament & gshare
-const unsigned globalCounterBits = 32;       // Tournament & gshare ~
+const unsigned globalPredictorSize = 32768; // Tournament & gshare
+const unsigned globalCounterBits = 64;       // Tournament, gshare, Perceptron, 12-64, also update main.c for recod keeping
 const unsigned choicePredictorSize = 8192;  // Tournament Keep this the same as globalPredictorSize.
 const unsigned choiceCounterBits = 2;       // Tournament ~
-const unsigned perceptronSize = 8192;
+const unsigned perceptronSize = 32768;
 
 Branch_Predictor *initBranchPredictor()
 {
