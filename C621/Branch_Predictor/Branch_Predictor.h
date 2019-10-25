@@ -23,6 +23,12 @@ typedef struct Sat_Counter
     uint8_t counter;
 }Sat_Counter;
 
+typedef struct Perceptron
+{
+    int64_t * weight;
+    unsigned num_perceptron;
+}Perceptron;
+
 typedef struct Branch_Predictor
 {
     #ifdef TWO_BIT_LOCAL
@@ -61,8 +67,10 @@ typedef struct Branch_Predictor
     #endif
     
     #ifdef PERCEPTRON
-    unsigned local_predictor_sets; // entries in the local predictor
-    unsigned index_mask;
+    unsigned perceptron_mask;
+    unsigned perceptron_size;
+    unsigned threshold;
+    perceptron * Perceptron;
     #endif
     
 }Branch_Predictor;
@@ -77,6 +85,11 @@ void decrementCounter(Sat_Counter *sat_counter);
 
 // Branch predictor functions
 bool predict(Branch_Predictor *branch_predictor, Instruction *instr);
+
+// Perceptron
+void initPerceptron(perceptron * Perceptron, unsigned counter_bits);
+int64_t computePerceptron(perceptron * Perceptron, Sat_Counter * sat_counter);
+void train(perceptron * Perceptron, unsigned threshold, Sat_Counter * sat_counter, bool is_taken, int64_t y);
 
 unsigned getIndex(uint64_t branch_addr, unsigned index_mask);
 bool getPrediction(Sat_Counter *sat_counter);
