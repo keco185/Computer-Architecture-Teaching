@@ -19,8 +19,10 @@
 typedef struct Sat_Counter
 {
     unsigned counter_bits;
-    uint8_t max_val;
-    uint8_t counter;
+    // uint8_t max_val;
+    // uint8_t counter;
+    uint64_t max_val;
+    uint64_t counter;
 }Sat_Counter;
 
 typedef struct Perceptron
