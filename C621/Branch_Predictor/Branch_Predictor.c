@@ -299,7 +299,7 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
     // Step one, get prediction
     unsigned perceptron_idx = branch_predictor -> perceptron_mask & branch_address;
 
-    init64_t y = computePerceptron(&(branch_predictor -> perceptron[perceptron_idx]), 
+    int64_t y = computePerceptron(&(branch_predictor -> perceptron[perceptron_idx]), 
 				   &(branch_predictor -> global_counters[global_predictor_idx]));
    
     train(&(branch_predictor -> perceptron[perceptron_idx]), branch_predictor -> threshold,
