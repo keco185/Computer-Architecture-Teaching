@@ -127,9 +127,9 @@ Branch_Predictor *initBranchPredictor()
 
     branch_predictor -> perceptron_size = globalPredictorSize;
 
-    // Initialize sat counters
-    branch_predictor->threshold =
-        1.93 * globalCounterBits + 14;
+    // Initialize threshold for branch prediction
+    branch_predictor -> threshold =
+        1.93 * globalCounterBits + 14; // best threshold given history length of h (found on page 201)
 
     unsigned perceptronBits = 1 + floor(log2(branch_predictor -> threshold));
 
