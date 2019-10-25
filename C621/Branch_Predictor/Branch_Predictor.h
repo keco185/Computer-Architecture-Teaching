@@ -29,10 +29,16 @@ typedef struct Perceptron
 {
     int64_t * weight;
     unsigned num_perceptron;
-}Perceptron;
+} Perceptron;
 
 typedef struct Branch_Predictor
 {
+	unsigned global_predictor_size;
+    unsigned global_history_mask;
+    Sat_Counter *global_counters;
+    uint64_t global_history;
+	
+	
     #ifdef TWO_BIT_LOCAL
     unsigned local_predictor_sets; // Number of entries in a local predictor
     unsigned index_mask;
@@ -72,10 +78,10 @@ typedef struct Branch_Predictor
     unsigned perceptron_mask;
     unsigned perceptron_size;
     unsigned threshold;
-    perceptron * Perceptron;
+    Perceptron *perceptron;
     #endif
     
-}Branch_Predictor;
+} Branch_Predictor;
 
 // Initialization function
 Branch_Predictor *initBranchPredictor();
@@ -89,9 +95,9 @@ void decrementCounter(Sat_Counter *sat_counter);
 bool predict(Branch_Predictor *branch_predictor, Instruction *instr);
 
 // Perceptron
-void initPerceptron(perceptron * Perceptron, unsigned counter_bits);
-int64_t computePerceptron(perceptron * Perceptron, Sat_Counter * sat_counter);
-void train(perceptron * Perceptron, unsigned threshold, Sat_Counter * sat_counter, bool is_taken, int64_t y);
+void initPerceptron(Perceptron *perceptron, unsigned counter_bits);
+int64_t computePerceptron(Perceptron *perceptron, Sat_Counter * sat_counter);
+void train(Perceptron *perceptron, unsigned threshold, Sat_Counter * sat_counter, bool is_taken, int64_t y);
 
 unsigned getIndex(uint64_t branch_addr, unsigned index_mask);
 bool getPrediction(Sat_Counter *sat_counter);

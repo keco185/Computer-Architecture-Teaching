@@ -6,15 +6,16 @@ const unsigned instShiftAmt = 2; // Number of bits to shift a PC by
 const unsigned localPredictorSize = 2048;   // two-bit
 const unsigned localCounterBits = 2;        //two-bit
 const unsigned localHistoryTableSize = 2048;// Tournament
-const unsigned globalPredictorSize = 1048576; // Tournament & gshare
-const unsigned globalCounterBits = 2;       // Tournament & gshare ~
+const unsigned globalPredictorSize = 8192; // Tournament & gshare
+const unsigned globalCounterBits = 12;       // Tournament & gshare ~
 const unsigned choicePredictorSize = 8192;  // Tournament Keep this the same as globalPredictorSize.
 const unsigned choiceCounterBits = 2;       // Tournament ~
-const unsigned perceptronSize = 2048;
+const unsigned perceptronSize = 8192;
 
 Branch_Predictor *initBranchPredictor()
 {
     Branch_Predictor *branch_predictor = (Branch_Predictor *)malloc(sizeof(Branch_Predictor));
+	
 
     #ifdef TWO_BIT_LOCAL
     branch_predictor->local_predictor_sets = localPredictorSize;
@@ -118,24 +119,23 @@ Branch_Predictor *initBranchPredictor()
     branch_predictor->global_history = 0;
     #endif
 	
-    return branch_predictor;
-}
 
    // Perceptron
     #ifdef PERCEPTRON
+	
+	
     assert(checkPowerofTwo(perceptronSize));
 
     branch_predictor -> perceptron_size = perceptronSize;
 
     // Initialize threshold for branch prediction
-    branch_predictor -> threshold =
-        1.93 * globalCounterBits + 14; // best threshold given history length of h (found on page 201)
+    branch_predictor -> threshold =1.93 * globalCounterBits + 14; // best threshold given history length of h (found on page 201)
 
     unsigned perceptronBit = 1 + floor(log2(branch_predictor -> threshold));
 
     branch_predictor -> perceptron_mask = perceptronSize - 1;
 
-    branch_predictor -> perceptron = (Perceptron *)malloc(perceptronSize * sizeof(perceptron));
+    branch_predictor -> perceptron = (Perceptron *)malloc(perceptronSize * sizeof(Perceptron));
 
     for (int i = 0; i < perceptronSize; i++)
     {
@@ -293,17 +293,14 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
     //
     return prediction_correct;
     #endif
-}
+
 
     #ifdef PERCEPTRON
     // Step one, get prediction
     unsigned perceptron_idx = branch_predictor -> perceptron_mask & branch_address;
 
-    int64_t y = computePerceptron(&(branch_predictor -> perceptron[perceptron_idx]), 
-				   &(branch_predictor -> global_counters[global_predictor_idx]));
-   
-    train(&(branch_predictor -> perceptron[perceptron_idx]), branch_predictor -> threshold,
-	  &(branch_predictor -> global_counters[global_predictor_idx]), instr -> taken, y);
+    int64_t y = computePerceptron(&(branch_predictor -> perceptron[perceptron_idx]), &(branch_predictor -> global_counters[perceptron_idx]));
+    train(&(branch_predictor -> perceptron[perceptron_idx]), branch_predictor -> threshold, &(branch_predictor -> global_counters[perceptron_idx]), instr -> taken, y);
 
     bool prediction = (y > 0);
     
@@ -312,7 +309,7 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
 }
 
 // Perceptron
-inline void initPerceptron(perceptron * Perceptron, unsigned counter_bits)
+inline void initPerceptron(Perceptron *perceptron, unsigned counter_bits)
 {
 	perceptron -> weight = (int64_t *)malloc(counter_bits * sizeof(int64_t));
 	
@@ -321,7 +318,7 @@ inline void initPerceptron(perceptron * Perceptron, unsigned counter_bits)
         perceptron -> num_perceptron = counter_bits;
 }
 
-inline int64_t computePerceptron(perceptron * Perceptron, Sat_Counter * sat_counter)
+inline int64_t computePerceptron(Perceptron *perceptron, Sat_Counter *sat_counter)
 {
 	int64_t y = perceptron -> weight[0];
 	for(int i =1; i <= sat_counter -> counter_bits; i++)
@@ -331,12 +328,12 @@ inline int64_t computePerceptron(perceptron * Perceptron, Sat_Counter * sat_coun
 		
 		if(temp < 0)
 			x= -1;
-		y+= x * perceptron -> weight[i];
+		y+= x *perceptron -> weight[i];
 	}
 	return y;
 }
 
-inline void train( perceptron * Perceptron, unsigned threshold, Sat_Counter * global, bool is_taken, int64_t y)
+inline void train( Perceptron *perceptron, unsigned threshold, Sat_Counter *global, bool is_taken, int64_t y)
 {
 	if((y < 0) == is_taken || (y > 0) == is_taken || y <= threshold)
 		
