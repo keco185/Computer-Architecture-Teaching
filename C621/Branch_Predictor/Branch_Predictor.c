@@ -10,8 +10,7 @@ const unsigned globalPredictorSize = 1048576; // Tournament & gshare
 const unsigned globalCounterBits = 2;       // Tournament & gshare ~
 const unsigned choicePredictorSize = 8192;  // Tournament Keep this the same as globalPredictorSize.
 const unsigned choiceCounterBits = 2;       // Tournament ~
-const unsigned perceptronsize = 12;
-const unsigned perceptronTableSize = 12;
+const unsigned perceptronSize = 2048;
 
 Branch_Predictor *initBranchPredictor()
 {
@@ -124,19 +123,23 @@ Branch_Predictor *initBranchPredictor()
 
    // Perceptron
     #ifdef PERCEPTRON
-    branch_predictor->local_predictor_sets = localPredictorSize;
-    assert(checkPowerofTwo(branch_predictor->local_predictor_sets));
+    assert(checkPowerofTwo(perceptronSize));
 
-    branch_predictor->index_mask = branch_predictor->local_predictor_sets - 1;
+    branch_predictor -> perceptron_size = globalPredictorSize;
 
     // Initialize sat counters
-    branch_predictor->local_counters =
-        (Sat_Counter *)malloc(branch_predictor->local_predictor_sets * sizeof(Sat_Counter));
+    branch_predictor->threshold =
+        1.93 * globalCounterBits + 14;
 
-    int i = 0;
-    for (i; i < branch_predictor->local_predictor_sets; i++)
+    unsigned perceptronBits = 1 + floor(log2(branch_predictor -> threshold));
+
+    branch_predictor -> perceptron_mask = perceptronSize - 1;
+
+    branch_predictor -> perceptron = (Perceptrons *)malloc(perceptronSize * sizeof(perceptron));
+
+    for (i; i < perceptronSize; i++)
     {
-        initSatCounter(&(branch_predictor->local_counters[i]), localCounterBits);
+        initPerceptron(&(branch_predictor->perceptron[i]), globalCounterBits);
     }
     #endif
 
@@ -294,23 +297,62 @@ bool predict(Branch_Predictor *branch_predictor, Instruction *instr)
 
     #ifdef PERCEPTRON
     // Step one, get prediction
-    unsigned local_index = getIndex(branch_address, 
-                                    branch_predictor->index_mask);
+    unsigned perceptron_idx = branch_predictor -> perceptron_mask & branch_address;
 
-    bool prediction = getPrediction(&(branch_predictor->local_counters[local_index]));
+    init64_t y = computePerceptron(&(branch_predictor -> perceptron[perceptron_idx]), 
+				   &(branch_predictor -> global_counters[global_predictor_idx]));
+   
+    train(&(branch_predictor -> perceptron[perceptron_idx]), branch_predictor -> threshold,
+	  &(branch_predictor -> global_counters[global_predictor_idx]), instr -> taken, y);
 
-    // Step two, update counter
-    if (instr->taken)
-    {
-        incrementCounter(&(branch_predictor->local_counters[local_index]));
-    }
-    else
-    {
-        decrementCounter(&(branch_predictor->local_counters[local_index]));
-    }
-
-    return prediction == instr->taken;
+    bool prediction = (y > 0);
+    
+    return prediction == instr -> taken;
     #endif
+}
+
+// Perceptron
+inline void initPerceptron(perceptron * Perceptron, unsigned counter_bits)
+{
+	perceptron -> weight = (int64_t *)malloc(counter_bits * sizeof(int64_t));
+	
+	for(int i = 0; i <= counter_bits; i++)
+	perceptron -> weight[i] = 1;    
+        perceptron -> num_perceptron = counter_bits;
+}
+
+inline init64_t computePerceptron(perceptron * Perceptron, Sat_Counter * sat_counter)
+{
+	int64_t y = perceptron -> weight[0];
+	for(int i =1; i <= sat_counter -> counter_bits; i++)
+	{
+		int8_t temp = (sat_counter -> counter & (1 << i));
+		int8_t x = 1;
+		
+		if(temp < 0)
+			x= -1;
+		y+= x * perceptron -> weight[i];
+	}
+	return y;
+}
+
+inline void train( perceptron * Perceptron, unsigned threshold, Sat_Counter * global, bool is_taken, int64_t y)
+{
+	if((y < 0) == is_taken || (y > 0) == is_taken || y <= threshold)
+		
+		for(int i = 0; i <= global -> counter_bits; i++)
+	{
+		int8_t temp = (global -> counter & (1 << i));
+		int8_t x = 1;
+		int8_t t = 1;
+		
+	        if(temp < 0)
+			x = -1;
+		
+		if(is_taken == false)
+			t = -1;
+		perceptron -> weight[i] = perceptron -> weight[i] + (t * x);
+	}
 }
 
 inline unsigned getIndex(uint64_t branch_addr, unsigned index_mask)
