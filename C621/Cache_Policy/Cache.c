@@ -225,11 +225,11 @@ bool lfu(Cache *cache, uint64_t addr, Cache_Block **victim_blk, uint64_t *wb_add
         }
     }
 
-    // Step two, if there is no invalid block. Locate the LRU block
+    // Step two, if there is no invalid block. Locate the LFU block
     Cache_Block *victim = ways[0];
     for (i = 1; i < cache->num_ways; i++)
     {
-        if (ways[i]->when_touched < victim->when_touched)
+        if (ways[i]->frequency < victim->when_touched)
         {
             victim = ways[i];
         }
