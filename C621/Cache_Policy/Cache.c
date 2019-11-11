@@ -229,7 +229,7 @@ bool lfu(Cache *cache, uint64_t addr, Cache_Block **victim_blk, uint64_t *wb_add
     Cache_Block *victim = ways[0];
     for (i = 1; i < cache->num_ways; i++)
     {
-        if (ways[i]->frequency < victim->when_touched)
+        if (ways[i]->frequency < victim->frequency)
         {
             victim = ways[i];
         }
