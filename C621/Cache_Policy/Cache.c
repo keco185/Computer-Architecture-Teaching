@@ -3,9 +3,9 @@
 /* Constants */
 const unsigned block_size = 64; // Size of a cache line (in Bytes)
 // TODO, you should try different size of cache, for example, 128KB, 256KB, 512KB, 1MB, 2MB
-const unsigned cache_size = 128; // Size of a cache (in KB)
+const unsigned cache_size = 512; // Size of a cache (in KB)
 // TODO, you should try different association configurations, for example 4, 8, 16
-const unsigned assoc = 4;
+const unsigned assoc = 8;
 
 Cache *initCache()
 {
@@ -28,6 +28,8 @@ Cache *initCache()
         cache->blocks[i].dirty = false;
         cache->blocks[i].when_touched = 0;
         cache->blocks[i].frequency = 0;
+        cache->blocks[i].outcome = false;
+        cache->blocks[i].signature_memory = 0; // memory placements of the signature
     }
 
     // Initialize Set-way variables
