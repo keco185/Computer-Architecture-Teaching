@@ -13,13 +13,16 @@
 #include "Request.h"
 
 // #define LRU
-#define LFU
+//#define LFU
+#define SHiP
 
 /* Cache */
 typedef struct Set
 {
     Cache_Block **ways; // Block ways within a set
 }Set;
+
+unsigned int shct[UINT32_MAX];
 
 typedef struct Cache
 {
@@ -35,7 +38,7 @@ typedef struct Cache
     unsigned set_shift;
     unsigned set_mask; // To extract set index
     unsigned tag_shift; // To extract tag
-
+    uint64_t sig_mask;
     Set *sets; // All the sets of a cache
     
 }Cache;

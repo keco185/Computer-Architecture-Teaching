@@ -3,14 +3,18 @@
 /* Constants */
 const unsigned block_size = 64; // Size of a cache line (in Bytes)
 // TODO, you should try different size of cache, for example, 128KB, 256KB, 512KB, 1MB, 2MB
-const unsigned cache_size = 512; // Size of a cache (in KB)
+const unsigned cache_size = 128; // Size of a cache (in KB)
 // TODO, you should try different association configurations, for example 4, 8, 16
-const unsigned assoc = 8;
+const unsigned assoc = 4;
+
+const unsigned signature_size = 64;
+
+const unsigned shct_sat = 31;
 
 Cache *initCache()
 {
     Cache *cache = (Cache *)malloc(sizeof(Cache));
-
+    
     cache->blk_mask = block_size - 1;
 
     unsigned num_blocks = cache_size * 1024 / block_size;
@@ -70,6 +74,14 @@ Cache *initCache()
 
         cache->sets[set].ways[way] = blk;
     }
+    
+    // add signature_size 1s followed by 0s to fill mask
+    cache->sig_mask = (((uint64_t)pow(2,signature_size))-1) << (64-signature_size);
+    if (signature_size > 49)
+    {
+        // if signature size is 50 or more, add 32 1s instead
+        cache->sig_mask = ((((uint64_t)pow(2,32)))-1) << (64-signature_size);
+    }
 
     return cache;
 }
@@ -85,7 +97,7 @@ bool accessBlock(Cache *cache, Request *req, uint64_t access_time)
     if (blk != NULL) 
     {
         hit = true;
-
+        blk->outcome = true;
         // Update access time	
         blk->when_touched = access_time;
         // Increment frequency counter
@@ -95,6 +107,10 @@ bool accessBlock(Cache *cache, Request *req, uint64_t access_time)
         {
             blk->dirty = true;
         }
+        if (shct[blk->signature_memory] < shct_sat) {
+            shct[blk->signature_memory] += 1;
+        }
+        
     }
 
     return hit;
@@ -115,21 +131,39 @@ bool insertBlock(Cache *cache, Request *req, uint64_t access_time, uint64_t *wb_
         bool wb_required = lfu(cache, blk_aligned_addr, &victim, wb_addr);
     #endif
     
+    #ifdef SHiP
+        bool wb_required = lru(cache, blk_aligned_addr, &victim, wb_addr);
+    #endif
+    
     assert(victim != NULL);
 
+    if(!victim->outcome) {
+        shct[victim->signature_memory] -= 1;
+    }
     // Step two, insert the new block
     uint64_t tag = req->load_or_store_addr >> cache->tag_shift;
     victim->tag = tag;
     victim->valid = true;
-
+    victim->outcome = false;
+    #ifndef SHiP
     victim->when_touched = access_time;
     ++victim->frequency;
+
+    #endif
+    
+    #ifdef SHiP
+    victim->PC = req->PC;
+    victim->signature_memory = (victim->PC & cache->sig_mask) >> (64 - signature_size);
+    if(shct[victim->signature_memory] > 0) {
+        victim->when_touched = access_time;
+    }
+    #endif
 
     if (req->req_type == STORE)
     {
         victim->dirty = true;
     }
-
+    
     return wb_required;
 //    printf("Inserted: %"PRIu64"\n", req->load_or_store_addr);
 }
